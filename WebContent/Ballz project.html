@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Ballz project</title>
+<script src="Ballz3.js"></script>
+<script src="Box.js"></script>
+<script src="hitTest.js"></script>
+<script>
+var wrapper;
+var info;
+var stage;
+var down; // 바닥
+var subject; // info 창에 제목
+var round; // info 창에 라운드 글자
+var round_num=1; // info 창에 라운드 숫자
+var ball;
+var ballPosX=200; // 처음 나타나는 ball의 초기 x값
+var ballArray = new Array(); // ball의 연속생성을 위한 배열
+var bg; // 박스의 배경이미지
+var nick; // 박스의 name 
+var bigBoxArray = new Array();
+var bx,by,ax,ay; // 마우스의 클릭좌표값
+var onGame=false;// 게임의 시작을 알린다
+var audio;
+var st; // cleartimeout 을 위한 변수
+var count=0; // setInterval 시간측정을 위한 변수
+
+window.addEventListener("load", function(){
+	document.body.style.background="black";
+	document.body.style.margin=0+"px";
+	document.body.style.textAlign="center";
+
+	setStart();
+
+});
+
+// stage를 준비하는 함수
+function setStage() {
+	wrapper = document.createElement("div");
+//	wrapper.style.background = "blue";
+	wrapper.style.background = "url('bg4.jpg')";
+	wrapper.style.margin="auto";
+	wrapper.style.position = "relative";
+	wrapper.style.top=50+"px";
+	wrapper.style.width = 430+"px";
+	wrapper.style.height = 650+"px";
+	wrapper.style.float="center";
+	document.body.appendChild(wrapper);
+
+	info = document.createElement("div");
+//	info.style.background = "gray";
+	info.style.position = "absolute";
+	info.style.left=0+"px";
+	info.style.top=0+"px";
+	info.style.width = 430+"px";
+	info.style.height = 50+"px";
+	info.style.float = "left";
+	wrapper.appendChild(info);
+
+	stage = document.createElement("div");
+//	stage.style.background = "url('bg.jpg')";
+	stage.style.position = "absolute";
+	stage.style.left=0+"px";
+	stage.style.top=50+"px";
+	stage.style.width = 430+"px";
+	stage.style.height = 600+"px";
+	stage.style.float ="left";
+	wrapper.appendChild(stage);
+
+	down = document.createElement("div");
+	down.style.background = "url('bottom2.png')";
+//	down.style.background = "gray";
+	down.style.position="absolute";
+	down.style.left=0+"px";
+	down.style.top=550+"px";
+	down.style.width=430+"px";
+	down.style.height=50+"px";
+	stage.appendChild(down);
+}
+// info 창에 공의 갯수, 라운드 위치 표시
+function setInfo(){
+	// 게임 제목달기
+	subject = document.createElement("span");
+	subject.style.position = "absolute";
+	subject.style.left = 10+"px";
+	subject.style.top = 0+"px";
+	subject.style.fontSize=30+"pt";
+	subject.style.fontWeight="bold";
+	subject.style.color="white";
+	subject.innerText = "Mario Jump"; // 게임 타이틀...
+	info.appendChild(subject);
+
+	// 게임 라운드 출력하기
+	round = document.createElement("span"); // 라운드 위치
+	round.style.position = "absolute";
+	round.style.left=270+"px";
+	round.style.top=5+"px";
+	round.style.fontSize=25+"pt";
+	round.style.color="white";
+	round.innerText="round  "+round_num;
+	info.appendChild(round);
+}
+
+// ball을 준비하는 함수
+// ball을 연달아 받게되면 배열이 필요하려나?
+// ball을 추가 할 때 x,y 좌표는 어떻게??
+function setBallz() {
+	ball = new Ballz(stage,ballPosX,530);
+	ball.init();
+	ballArray.push(ball);
+	console.log("볼의 위치1"+ballPosX);
+//	ballPosX = ballArray[0].x;//이 위치지정은 한발작 늦다 착지와 동시에 좌표설정을 해야한다
+//	console.log("볼의 위치2"+ballPosX);
+}
+
+// ball이 맞출 box를 준비하는 함수
+function setBox() {
+	var boxArray = new Array();
+	for(var i=0; i<7; i++) {
+		var r = parseInt(Math.random()*2); // 0또는 1의 값을 가짐
+		if(r==0) {
+			var rb = parseInt(Math.random()*5);
+			if(rb==0) {
+				bg = "itembox3.png";
+				nick = "itembox";
+			}
+			else{
+				bg = "well3.png";
+				nick = "brickbox";
+			}
+			var box = new Box(stage,bg,i*60,0,nick);
+			box.init();
+			boxArray.push(box);
+		}
+	}
+
+	bigBoxArray.unshift(boxArray);
+
+	playAudio("mario box appear.wav");
+
+
+}
+
+// 마우스 드래그로 움직임을 정의
+function setMove() {
+	stage.addEventListener("mousedown",function(){
+		if(onGame==false) { // 공이 움직일 때 마우스 조작 차단
+			bx=event.clientX;
+			by=event.clientY;
+			console.log("처음클릭x "+bx+", 처음클릭y "+by);
+		}
+	});
+	stage.addEventListener("mouseup",function(){
+		if(onGame==false) {
+			ax=event.clientX;
+			ay=event.clientY;
+			console.log("나중클릭x "+ax+", 나중클릭y "+ay);
+			ball.velX = parseInt((bx-ax)/20);
+			ball.velY = parseInt((by-ay)/20);
+			if(ball.velX>8) { // ball.velX 의 최대값, 최소값 제한
+				ball.velX=8;
+			}
+			else if(ball.velX<-8){
+				ball.velX=-8;
+			}
+			if(ball.velY>8) { // ball.velY 의 최대값, 최소값 제한
+				ball.velY=8;
+			}
+			else if(ball.velY<-8){
+				ball.velY=-8;
+			}
+			console.log(ball.velX, ball.velY);
+			ball.jump=true;
+			onGame = true;
+
+			playAudio("mario jump.wav");
+		}
+	});
+}
+
+function play(){ // setInterval을 통한 key function!!!!
+	if(onGame) { // onGame=true  =>공이 움직임
+		//여러개의 공을 날려야하기 때문에 count 같은 것을 통해 시간을 조절 할 필요가 있다.
+		//ball.move();
+//		var count=0; // 시간측정을 위한 변수
+
+		for(var i=0; i<ballArray.length; i++) {
+			console.log("count = "+count);
+			ballArray[i].move();  // 현재 공이 늘어나고 있지 않아서 괜찮다...
+		}
+	}
+	else { // onGame=false  => 공은 멈추고 박스가 움직임
+/*		if(ballArray.length<round_num) {
+			console.log(ballArray.length);
+			setBallz();
+			console.log(ballArray.length);
+		}*/
+		if(bigBoxArray.length<round_num) {
+			console.log(bigBoxArray.length);
+			setBox(); //onGame이 false인 상태에서 계속 호출됨
+			console.log(bigBoxArray.length);
+		}
+		for(var i=0;i<bigBoxArray.length;i++) {
+			for(var j=0;j<bigBoxArray[i].length;j++) {
+				if(bigBoxArray[i][j].y<=60+60*i) {
+					bigBoxArray[i][j].move();
+				}
+				else{
+					console.log(onGame); 
+					// 공이 멈췄을 때, 실행부가 이곳으로 흘러옴
+					break;
+				}
+			}
+		}
+	}
+}
+
+function setGameOver() { // 박스가 바닥에 닿으면 불러온다
+	var overImg = document.createElement("img");
+	overImg.src = "gameover.gif";
+	overImg.style.position = "absolute";
+	overImg.style.left=-160+"px";
+	overImg.style.top=70+"px";
+	overImg.style.width = 750+"px";
+	overImg.style.height = 450+"px";
+	overImg.style.float="center";
+	stage.appendChild(overImg);
+
+	playAudio("mario dies.wav");
+
+	document.body.addEventListener("click",function(){
+		//처음으로 돌아감
+		//페이지 새로고침
+		location.reload();
+	});
+}
+
+function setStart() {// 처음 시작창을 띄운다
+
+	playAudio("SuperMarioBros.mp3");
+
+	var startImg = document.createElement("img");
+	startImg.src = "pressstartgame.gif";
+	startImg.style.position = "relative";
+	startImg.style.top=200+"px";
+	startImg.style.width = 500+"px";
+	startImg.style.height = 281+"px";
+	startImg.style.float="center";
+
+	// 처음에 이 화면만 나온다.
+	// 바디에 붙인 후 클릭하면 스테이지를 불러온다.
+	document.body.appendChild(startImg); //
+
+	var span = document.createElement("span");
+	span.style.position="relative";
+	span.style.color="white";
+	span.style.top = 400+"px";
+	span.style.fontSize=15+"pt";
+	span.style.fontWeight="bold";
+	span.style.float="center";
+	span.innerHTML="<br>Click to Start!! Drag to Move a Ball";
+	document.body.appendChild(span);
+
+	startImg.addEventListener("click",function(){
+		// 스테이지들이 불러와짐
+		// 게임 초기화작업 수행
+		document.body.removeChild(startImg);
+		
+		setStage();
+		setInfo();
+		setBallz();
+		setMove();
+
+		st = setInterval("play()",10);
+	});	
+}
+
+function playAudio(src) {
+	audio = document.createElement("audio");
+	audio.src = src;
+	audio.play();		
+}
+
+
+</script>
+</head>
+<body>
+
+</body>
+</html>
